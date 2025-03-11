@@ -1,4 +1,4 @@
-# magic-pdf-server
+# pdf-to-markdown
 
 ## A PDF to Markdown Conversion Service Based on MinerU's magic-pdf CLI
 
@@ -8,9 +8,9 @@
 
 ```shell
 # Clone repository
-git clone https://github.com/soja/magic-pdf-server.git
+git clone https://github.com/soja/pdf-to-markdown.git
 # Start service
-cd magic-pdf-server/
+cd pdf-to-markdown/
 docker-compose up -d
 ```
 
