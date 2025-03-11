@@ -8,9 +8,9 @@ magic-pdf-server
 
 ```shell
 # 克隆代码
-git clone https://github.com/soja/magic-pdf-server.git
+git clone https://github.com/soja/pdf-to-markdown.git
 # 启动服务
-cd magic-pdf-server/
+cd pdf-to-markdown/
 docker-compose up -d
 ```
 
