@@ -1,7 +1,7 @@
 version: '3.8'
 services:
-  mineru-server:
-    container_name: mineru-server
+  pdf-to-markdown:
+    container_name: pdf-to-markdown
     image: registry.cn-shanghai.aliyuncs.com/soja/public_base:mineru_20250310
     deploy:
       resources:
@@ -10,11 +10,11 @@ services:
             - driver: nvidia
               capabilities: [gpu]
     runtime: nvidia
-    command: /bin/bash -c "echo 'source /opt/mineru_venv/bin/activate' >> ~/.bashrc && cd /opt/app/mineru-server/ && python main.py"
+    command: /bin/bash -c "echo 'source /opt/mineru_venv/bin/activate' >> ~/.bashrc && cd /opt/app/pdf-to-markdown/ && python main.py"
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
     restart: unless-stopped
     ports:
       - "8081:5001"
     volumes:
-      - /home/user/minerU/mineru-server:/opt/app/mineru-server
+      - /home/user/minerU/pdf-to-markdown:/opt/app/pdf-to-markdown
