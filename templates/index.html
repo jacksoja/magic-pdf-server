@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PDF File Conversion Management System</title>
+    <link rel="stylesheet" href="/layui/css/layui.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .layui-container {
+            margin-top: 10px;
+            width: 100% !important;
+            max-width: 95%;
+            margin-left: auto;
+            margin-right: auto;
+            padding-left: 15px;
+            padding-right: 15px;
+        }
+
+        @media screen and (max-width: 768px) {
+            .layui-container {
+                max-width: 95%;
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+        }
+
+        @media screen and (max-width: 1920px) {
+            .layui-container {
+                max-width: 90%;
+                padding-left: 20px;
+                padding-right: 20px;
+            }
+        }
+
+        .upload-card {
+            margin-right: 15px;
+        }
+
+        .task-table-box {
+            background: #fff;
+            padding: 15px;
+        }
+
+        .layui-upload-drag {
+            margin-top: 15px;
+        }
+
+        .title-container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+        }
+
+        .sys-title {
+            font-size: 32px;
+            color: #333;
+            text-align: center;
+        }
+
+        .layui-upload-drag {
+            min-height: 200px;
+            padding: 30px 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .layui-upload-drag i {
+            font-size: 36px;
+            margin-bottom: 15px;
+        }
+
+        .layui-upload-drag p {
+            line-height: 1.6;
+            margin: 8px 0;
+        }
+
+        .task-table thead {
+            position: sticky;
+            top: 0;
+            background: white;
+            box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .task-table th {
+            min-width: 120px;
+            padding: 12px 15px;
+            text-align: left;
+        }
+
+        .task-table td {
+            padding: 12px 15px;
+            vertical-align: top;
+            max-width: 400px;
+        }
+
+        .layui-table-cell {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        button {
+            padding: 6px 12px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+<div class="layui-container">
+    <div class="layui-header">
+        <div class="layui-nav layui-bg-cyan" lay-filter="nav">
+            <div class="layui-nav-item layui-logo" style="margin-right:30px;">PDF to Markdown</div>
+            <li class="layui-nav-item layui-this"><a href="/">Task Management</a></li>
+
+        </div>
+    </div>
+    <div class="layui-row layui-col-space15">
+        <div class="layui-col-md4">
+            <div class="layui-card upload-card">
+                <div class="layui-card-header">PDF File Upload</div>
+                <div class="layui-card-body">
+                    <div class="layui-upload">
+                        <button type="button" class="layui-btn" id="chooseFile">Choose File</button>
+                        <div class="layui-upload-drag" id="dropZone">
+                            <i class="layui-icon layui-icon-upload"></i>
+                            <p>Please drag the PDF file here or click to upload.</p>
+                            <p>Supported format: PDF (Max size: 200MB)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-col-md8">
+            <div class="layui-card">
+                <div class="layui-card-header">File Conversion Task List</div>
+                <div class="layui-card-body task-table-box">
+                    <table id="taskTable" lay-filter="taskTable"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/html" id="toolbarDemo">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-disabled layui-btn-sm" id="batchDelete">Batch Delete</button>
+    </div>
+</script>
+<script type="text/html" id="operateTpl">
+    {% raw %}{{#  if(d.status === 'completed'){ }}{% endraw %}
+    <a class="layui-btn layui-btn-xs" lay-event="download">Download</a>
+    {% raw %}{{#  } }}{% endraw %}
+    <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="delete">Delete</a>
+</script>
+<script src="/jquery/3.6.0/jquery.min.js"></script>
+<script src="/layui/layui.js"></script>
+<script>
+    layui.use(['table', 'upload', 'layer'], function () {
+        // 设置全局语言配置
+        layui.config({
+            lang: 'en'
+        });
+        
+        var table = layui.table;
+        var upload = layui.upload;
+        var layer = layui.layer;
+        
+        // 状态列模板
+        statusTpl: d => {
+            const statusMap = { 
+                'pending': 'Pending',
+                'processing': 'Processing',
+                'completed': 'Completed',
+                'failed': 'Failed'
+            };
+            return '<span class="status "+d.status+">'+statusMap[d.status]+'</span>';
+        }
+        
+        // 上传组件配置
+        upload.render({
+            exts: 'pdf',
+            size: 200*1024,
+            accept: 'file',
+            error: function(res) {
+                layer.msg('Only PDF files under 200MB are allowed');
+            }
+        });
+        
+        // 标准表格配置
+        table.render({
+            elem: '#taskTable',
+            url: '/api/tasks',
+            toolbar: '#toolbarDemo',
+            defaultToolbar: ['filter', 'exports', 'print'],
+            lang: 'en',
+            page: true,
+            limits: [10, 20, 30],
+            limit: 10,
+            cols: [[
+                {type: 'checkbox', fixed: 'left'},
+                {field: 'uid', fixed: 'left', title: 'Task ID', width: 120},
+                {field: 'filename', title: 'Filename', autoresize: true},
+                {field: 'status', title: 'Status', templet: '#statusTpl', width: 120},
+                {field: 'created_at', title: 'Created Time', width: 180, templet: function(d){
+                    return new Date(d.created_at).toLocaleString();
+                }},
+                {fixed: 'right', title: 'Operate', width: 160, toolbar: '#operateTpl'}
+            ]]
+        });
+
+
+        // 确保 #taskTable 元素存在
+        var taskTableElement = document.getElementById('taskTable');
+        if (taskTableElement) {
+            table.render({
+                elem: '#taskTable',
+                url: '/api/tasks',
+                toolbar: '#toolbarDemo',
+                lang: 'en',
+                parseData: function (res) {
+                    return {
+                        "code": 0,
+                        "msg": "",
+                        "count": res.count,
+                        "data": res.data
+                    };
+                },
+                cols: [[
+                    {type: 'checkbox', fixed: 'left'},
+                    {field: 'uid', fixed: 'left', title: 'Task ID', width: 120},
+                    {field: 'filename', title: 'Filename', autoresize: true},
+                    {field: 'status', title: 'Status', templet: '#statusTpl', width: 120},
+                    {field: 'created_at', sort: true, title: 'Created Time', templet: function(d) {
+                            const date = new Date(d.created_at);
+                            const year = date.getFullYear();
+                            const month = String(date.getMonth() + 1).padStart(2, '0');
+                            const day = String(date.getDate()).padStart(2, '0');
+                            const hours = String(date.getHours()).padStart(2, '0');
+                            const minutes = String(date.getMinutes()).padStart(2, '0');
+                            const seconds = String(date.getSeconds()).padStart(2, '0');
+                            return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+                        }, width: 180
+                    },
+                    {fixed: 'right', title: 'Operate', width: 134, minWidth: 160, align: 'center', toolbar: '#operateTpl'}
+                ]],
+                done: function (res, curr, count) {
+                    function updateDeleteButton() {
+                        var checkStatus = table.checkStatus('taskTable');
+                        var $btn = window.$('#batchDelete');
+                        $btn.toggleClass('layui-btn-disabled', checkStatus.data.length === 0);
+                        $btn.toggleClass('layui-btn-danger', checkStatus.data.length > 0);
+                        $btn.prop('disabled', checkStatus.data.length === 0);
+                    }
+
+                    updateDeleteButton();
+
+                    table.on('checkbox(taskTable)', function (obj) {
+                        updateDeleteButton();
+                    });
+
+                    window.$('#batchDelete').click(function () {
+                        if ($(this).prop('disabled')) return;
+
+                        var checkStatus = table.checkStatus('taskTable');
+                        if (checkStatus.data.length === 0) {
+                            layer.msg('Please select tasks to delete first');
+                            return;
+                        }
+                        var uids = checkStatus.data.map(item => item.uid);
+
+                        layer.confirm('Confirm to delete selected ' + uids.length + ' tasks?', function(index) {
+                            fetch('/api/tasks/batch', {
+                                method: 'DELETE',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({uids: uids})
+                            }).then(() => {
+                                layer.msg('Tasks deleted successfully');
+                                table.reload('taskTable');
+                            });
+                            layer.close(index);
+                        });
+                    });
+
+                    table.on('tool(taskTable)', function (obj) {
+                        var data = obj.data;
+                        if (obj.event === 'delete') {
+                            layer.confirm('Confirm to delete this task?', function(index) {
+                                fetch('/api/tasks/' + data.uid, {method: 'DELETE'})
+                                    .then(() => {
+                                        layer.msg('Task deleted successfully');
+                                        table.reload('taskTable');
+                                    })
+                                layer.close(index);
+                            });
+                        } else if (obj.event === 'download') {
+                            window.location.href = '/api/download/' + data.uid;
+                        }
+                    });
+                },
+                page: {
+                    layout: ['count', 'prev', 'page', 'next', 'limit', 'refresh', 'skip']
+                },
+                limit: 10,
+                limits: [10, 20, 30]
+            });
+        } else {
+            console.error('Element with ID "taskTable" not found.');
+        }
+
+        // 使用 Layui 的上传组件
+        upload.render({
+            elem: '#chooseFile',
+            url: '/api/upload',
+            accept: 'application/pdf',
+            exts: 'pdf',
+            size: 200 * 1024,
+            acceptMime: 'application/pdf',
+            before: function(obj){
+                this.files = Array.isArray(obj.files) ? obj.files : [];
+                this.files = this.files.filter(function(file){
+                    console.log('Processing file:', file.name, file.type);
+                    if (!file.type.includes('pdf')) {
+                        layer.msg('Only PDF files are supported');
+                        return false;
+                    }
+                    return true;});
+                return true;
+            },
+            done: function (res) {
+                if (res.code === 0) {
+                    layer.msg('Upload successful');
+                    table.reload('taskTable');
+                } else {
+                    layer.msg('Upload failed: ' + res.msg);
+                }
+            }
+        });
+
+        upload.render({
+            elem: '#dropZone',
+            url: '/api/upload',
+            accept: 'application/pdf',
+            exts: 'pdf',
+            size: 200 * 1024,
+            acceptMime: 'application/pdf',
+            before: function(obj){
+                this.files = Array.isArray(obj.files) ? obj.files : [];
+                this.files = this.files.filter(function(file){
+                    console.log('Processing file:', file.name, file.type);
+                    if (!file.type.includes('pdf')) {
+                        layer.msg('Only PDF files are supported');
+                        return false;
+                    }
+                    return true;});
+                return true;
+            },
+            done: function (res) {
+                if (res.code === 0) {
+                    layer.msg('Upload successful');
+                    table.reload('taskTable');
+                } else {
+                    layer.msg('Upload failed: ' + res.msg);
+                }
+            }
+        });
+
+        // 修改: 将 loadTasks 函数定义移到 layui.use 内部
+        function loadTasks() {
+            fetch('/api/tasks')
+                .then(response => response.json())
+                .then(data => {
+                    table.reload('taskTable', {
+                        data: data.items
+                    });
+                })
+                .catch(error => console.error('Error loading tasks:', error));
+        }
+
+        // 修改: 初始化时调用 loadTasks，并设置定时器
+        loadTasks();
+        setInterval(loadTasks, 30000);
+    });
+</script>

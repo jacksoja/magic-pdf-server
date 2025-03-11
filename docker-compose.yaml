@@ -1,0 +1,20 @@
+version: '3.8'
+services:
+  mineru-server:
+    container_name: mineru-server
+    image: registry.cn-shanghai.aliyuncs.com/soja/public_base:mineru_20250310
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+    runtime: nvidia
+    command: /bin/bash -c "echo 'source /opt/mineru_venv/bin/activate' >> ~/.bashrc && cd /opt/app/mineru-server/ && python main.py"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    restart: unless-stopped
+    ports:
+      - "8081:5001"
+    volumes:
+      - /home/user/minerU/mineru-server:/opt/app/mineru-server
