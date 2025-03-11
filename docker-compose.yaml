@@ -17,4 +17,4 @@ services:
     ports:
       - "8081:5001"
     volumes:
-      - /home/user/minerU/pdf-to-markdown:/opt/app/pdf-to-markdown
+      - /home/user/pdf-to-markdown:/opt/app/pdf-to-markdown
